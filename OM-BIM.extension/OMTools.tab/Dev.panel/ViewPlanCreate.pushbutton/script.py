@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 __title__     = "ViewFromLevels"
 __author__    = "Oscar Mendoza"
-__doc__ = """Version = 1.1  
+__doc__ = """Version = 1.5  
 Date    = 22.10.2025  
 _____________________________________________________________________
 Description:
@@ -20,16 +20,17 @@ How-to:
 -> The script will create the views automatically  
 _____________________________________________________________________
 Last update:
-- [21.12.2023] - 1.0 Initial release  
-- [22.10.2025] - 1.1 Added Discipline, Prefix/Suffix and SubSpecialty options  
-_____________________________________________________________________
-Author: Oscar Mendoza"""  # Descripcion
+- [21.10.2025] - 1.0 Initial release  
+- [22.10.2025] - 1.1 Added Discipline, Prefix/Suffix and SubSpecialty options 
+- [25.11.2025] - 1.5 Fixed Multi-Language support for View Type 
 
-### EXTRA: Tu puedes borrar esto
+_____________________________________________________________________
+Author: Oscar Mendoza"""  # Description
+
+### EXTRA: You can delete this
 __helpurl__ = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
 __min_revit_ver__ = 2021
 __max_revit_ver__ = 2026
-
 
 # ⬇️ IMPORTS
 #--------------------------------------------------------------------------
@@ -50,71 +51,59 @@ selection = uidoc.Selection         #type: Selection
 # 💻MAIN
 #--------------------------------------------------------------------------
 
-def family_view_type(arg=None):
-    data = dict()
-    collector = (FilteredElementCollector(doc).OfClass(ViewFamilyType).ToElements())
-    # Almacenamos:
-    for famType in collector:
-            name = Element.Name.GetValue(famType)
-            data[name] = famType.Id
-    #Check names
-    claves = list(data.keys())
-    if arg not in data:
-        mensaje = "El tipo de vista '{}' no existe.\n\nTipos disponibles:\n{}\n\nIntentalo Nuevamente".format(
-            arg, "\n".join(sorted(data.keys()))
-        )
-        forms.alert(mensaje, title="OMTools | View Generator", exitscript=True)
-        return None
-
-    # Retornar resultado
-    return data[arg]
-
 def vista_create(nivel, nombre=None, config = None):
     """
-    Crea una vista de planta
-    config puede contener: type, discipline, SubEspecialidad
+    Creates a plan view.
+    config may contain: type, discipline, SubSpecialty
     """
+    ## CONFIG ##
     if config is None:
         config = {}
-
     tipo = config.get("type", "Floor Plan")
-    disciplina = config.get("discipline", "Fontaneria")
+    disciplina = config.get("discipline", "Plumbing")
     SubEspecialidad = config.get("SubEspecialidad", None)
 
-    if disciplina not in dic_disc.keys():
-        mensaje = "El tipo de Disciplina '{}' no existe.\n\nTipos disponibles:\n{}\n\nIntentalo Nuevamente".format(
-            disciplina, "\n".join(sorted(dic_disc.keys())))
-        forms.alert(mensaje, title="OMTools | View Generator", exitscript=True)
-        return None
-
+    ## code ##
     existing_views = [v for v in FilteredElementCollector(doc).OfClass(View).ToElements() if v.Name == nombre]
     if existing_views:
-        print("La vista '{}' ya existe. Se omitió.".format(nombre))
+        print("The view '{}' already exists. Skipped.".format(nombre))
         return None
-    idTipo = family_view_type(tipo)
+    idTipo = dic_ViewTypes[tipo]
 
     with Transaction(doc, "Create New View") as t:
         t.Start()
         # Name
-        vista = ViewPlan.Create(doc, idTipo, nivel.Id)
+        vista = ViewPlan.Create(doc, idTipo.Id, nivel.Id)
         vista.Name = nombre
         # View Discipline
         bic = BuiltInParameter.VIEW_DISCIPLINE
         vista.get_Parameter(bic).Set(int(dic_disc[disciplina]))
 
-        # Asigna subespecialidad si aplica
+        # Assign SubSpecialty if applicable
         if SubEspecialidad:
             param = vista.LookupParameter("SubEspecialidad")
-            param.Set(SubEspecialidad)
+            if not param:
+                mensaje2 = "The parameter does not exist"
+                forms.alert(mensaje2, title="OMTools | View Generator", exitscript=True)
+            if param:
+                param.Set(SubEspecialidad)
+
         t.Commit()
         return vista
 
-## DICTS ###
-#Entradas Config
-dic_types = {"Planta Arquitectonica":"Floor Plan", "Planta Estructural":"Structural Plan", "Planta de Techo":"Ceiling Plan"}
-dic_disc = {"Electricidad": ViewDiscipline.Electrical, "Estructuras":ViewDiscipline.Structural, "Coordinacion":ViewDiscipline.Coordination,
-           "Arquitectura": ViewDiscipline.Architectural, "Mecanicas": ViewDiscipline.Mechanical, "Fontaneria":ViewDiscipline.Plumbing }
 
+#Filter Views
+View_Types = FilteredElementCollector(doc).OfClass(ViewFamilyType).ToElements()
+View_Type_Plan = [vt for vt in View_Types if vt.ViewFamily == ViewFamily.FloorPlan][0]
+View_Type_Ceiling = [vt for vt in View_Types if vt.ViewFamily == ViewFamily.CeilingPlan][0]
+View_Type_StructuralPlan = [vt for vt in View_Types if vt.ViewFamily == ViewFamily.StructuralPlan][0]
+
+## DICTS ###
+
+dic_ViewTypes = {"Floor Plan": View_Type_Plan, "Ceiling Plan": View_Type_Ceiling, "Structural Plan": View_Type_StructuralPlan}
+
+dic_disc = {"Electrical": ViewDiscipline.Electrical, "Structural":ViewDiscipline.Structural, "Coordination":ViewDiscipline.Coordination,
+           "Architectural": ViewDiscipline.Architectural, "Mechanical": ViewDiscipline.Mechanical, "Plumbing":ViewDiscipline.Plumbing }
 
 
 ### COLLECTS ###
@@ -124,26 +113,29 @@ niv_dic = {x.Name:x for x in niveles}
 
 ### UI 1 ######
 niveles_ui =forms.SelectFromList.show(sorted(niv_dic.keys()),title="OMTools | View Generator", multiselect=True, button_name = "Select item")
-niveles_list = [niv_dic[x] for x in niveles_ui]
 
-if not niveles_ui:
-    mensaje = "No se selecciono niveles"
+if not niveles_ui or niveles_ui is None:
+    mensaje = "No levels were selected"
     forms.alert(mensaje, title="OMTools | View Generator", exitscript=True)
 
+niveles_list = [niv_dic[x] for x in niveles_ui]
 
 ### UI 2 ######
-components = [Label("Select Type of View"), ComboBox('ViewType', list(dic_types.keys())) ,
+components = [Label("Select Type of View"), ComboBox('ViewType', list(dic_ViewTypes.keys())) ,
               Label("Select Discipline"), ComboBox('Discipline', list(dic_disc.keys())),
               Label("Prefix"), TextBox('Prefix', Text="") ,
               Label("Suffix"), TextBox('Suffix', Text=""),
-              Label("SubEspecialidad (Parameter Optional)"), TextBox('SubEspecialidad', Text=""),Separator(),
+              Label("SubEspecialidad (Optional Parameter)"), TextBox('SubEspecialidad', Text=""),Separator(),
               Button("Select")]
-
-
 form = FlexForm("OMTools | View Generator", components)
 form.show()
+if not form.values:
+    mensaje = "No options were selected. Script cancelled."
+    forms.alert(mensaje, title="OMTools | View Generator", exitscript=True)
+
+
 ## RESULT ##
-ViewType = dic_types[str(form.values["ViewType"])]
+ViewType = str(form.values["ViewType"])
 discipline = form.values["Discipline"]
 Prefix = form.values["Prefix"]
 Suffix = form.values["Suffix"]
@@ -158,10 +150,9 @@ for lvl in niveles_list:
     if vista:
         views_created += 1
 
-# Mostrar resultado final
+# Final result
 Alert(
-    "✅ Se crearon {} vistas estructurales correctamente.".format(views_created),
+    "✅ {} views were created successfully.".format(views_created),
     title="OMTools | View Generator",
-    header="Proceso completado",
+    header="Process completed",
     exit=False)
-
