@@ -61,20 +61,23 @@
         <!-- Excel File -->
         <DockPanel Margin="10,10,0,0">
             <TextBlock Text="Excel File:"
-               FontWeight="Bold"
-               Foreground="#222"
-               Width="130"
-               VerticalAlignment="Center"
-               DockPanel.Dock="Left"/>
-           <Grid Width="230">
-                <Button Content="Browse..." Click="UI_Browse"
-                Width="95"
-                Background="#E8F0FE"
-                Foreground="#333"
-                BorderBrush="#BFD6FF"
-                Cursor="Hand"
-                HorizontalAlignment="Left" Height="20" VerticalAlignment="Top"/>
-            </Grid>
+                       FontWeight="Bold"
+                       Foreground="#222"
+                       Width="130"
+                       VerticalAlignment="Center"
+                       DockPanel.Dock="Left"/>
+
+            <StackPanel Width="230">
+                <Button Content="Browse..."
+                        x:Name = "UI_browse"
+                        Click="UI_Browse"
+                        Width="220"
+                        Background="#E8F0FE"
+                        Foreground="#333"
+                        BorderBrush="#BFD6FF"
+                        Cursor="Hand"
+                        Height="20"/>
+            </StackPanel>
         </DockPanel>
         <!-- Index Sheet Excel -->
         <DockPanel Margin="10,10,0,0">

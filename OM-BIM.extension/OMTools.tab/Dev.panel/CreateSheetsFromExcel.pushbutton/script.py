@@ -62,7 +62,7 @@ PATH_SCRIPT = os.path.dirname(__file__) # Dirección actual
 
 
 def excel_to_rows(filepath, index):
-    workbook = xlrd.open_workbook(file_path)
+    workbook = xlrd.open_workbook(filepath)
     sheet = workbook.sheet_by_index(int(index))
 
     row_count = sheet.nrows
@@ -128,14 +128,14 @@ class FirstButton(Window):
     def textbox_item(self):
         return self.UI_text.Text
 
-
+    # Events 🧬
     def UI_Browse(self, sender, e):
         global excel_path
         excel_path = forms.pick_file(file_ext='xlsx',
                                      init_dir='D:\\',
                                      title='Select Excel File')
         if excel_path:
-            self.UI_FilePath.Text = excel_path
+            self.UI_browse.Content = excel_path
     # Events
     def Close_Click(self, sender, e):
         self.Close()
