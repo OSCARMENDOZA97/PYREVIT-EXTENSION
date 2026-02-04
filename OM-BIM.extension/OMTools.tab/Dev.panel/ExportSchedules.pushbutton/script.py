@@ -21,7 +21,7 @@ __helpurl__ = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
 __min_revit_ver__ = 2021
 __max_revit_ver__ = 2025
 
-from logging import Filter
+from distutils.dep_util import newer
 
 # ⬇️ IMPORTS
 #--------------------------------------------------------------------------
@@ -39,35 +39,6 @@ selection = uidoc.Selection         #type: Selection
 
 # 💻MAIN
 #--------------------------------------------------------------------------
-
-## UI ##
-# 1. Collect schedules
-
-selected_schedules = forms.select_schedules(title ="OMBIM_AUTOMATION- Export schedules")
-#Case 1- not select schedule
-if not selected_schedules:
-    forms.alert("Schedule not chosen. Please try again",
-                title = "OMBIM_AUTOMATION - Export Schedules",
-                exitscript=True)
-#Case 2- schedule exceed 31 characters
-schedules_exceed = []
-for x in selected_schedules:
-    schedule_name = Element.Name.GetValue(x)
-    if len(schedule_name) > 31:
-        schedules_exceed.append(x)
-    else:
-        pass
-if schedules_exceed:
-    msg = ("\n⚠ List of schedules exceeds the 31 characters allowed:")
-    msg += "\n".join("\n- {}".format(Element.Name.GetValue(x)) for x in schedules_exceed)
-    forms.alert(
-        msg,
-        title = "OMBIM_Automation - Error Name Schedules",
-        exitscript=True)
-
-# 2. Select Excel File
-file_path = select_file( 'Excel File (*.xlsx)|*.xlsx',"OMBIM_AUTOMATION - Select Excel File")
-
 #### FUNCTIONS ######
 def get_data_schedules(list_schedules):
     """Collect data from schedule
@@ -107,18 +78,104 @@ def dump(xlfile, datadict):
         for idx, data in enumerate(xlsheetdata):
             xlsheet.write_row(idx, 0, data)
     xlwb.close()
+#*** FUNCTION  TO CHECK SCHEDULES**
+def check_schedule_names(list1):
+    schedules_exceed = [
+        x for x in list1
+        if len(Element.Name.GetValue(x)) > 31]
 
-### CODE ###
+    if schedules_exceed:
+        msg = "⚠ The following schedules exceed the 31-character limit:\n"
+        msg += "\n".join("- {}".format(Element.Name.GetValue(x)) for x in schedules_exceed)
+        msg += "\n\nPlease select Option 2 or Option 3."
 
-dictionary_data = get_data_schedules(selected_schedules)
-dump(file_path, dictionary_data)
+        forms.alert(
+            msg,
+            title="OMBIM_Automation - Schedule Name Error",
+            exitscript=True
+        )
 
-## REPORT FINAL##
-names = dictionary_data.keys()
+    return schedules_exceed
 
-msg = ("  Successfull export schedules ✅\n")
-msg += "\n  Total schedules export 📦: {}\n".format(len(names))
-msg += "\n  List of schedules export 📃:\n"
-msg += "\n".join("    -{}".format(x)for x in names)
+### FUNCTION TO MESSAGE ##
+def messagefinal(names):
+    msg = ("  Successfull export schedules ✅\n")
+    msg += "\n  Total schedules export 📦: {}\n".format(len(names))
+    msg += "\n  List of schedules export 📃:\n"
+    msg += "\n".join("    -{}".format(x) for x in names)
 
-Alert(msg, title="OMBIM-AUTOMATION", header="Complete clean Parameters", exit=False)
+    Alert(msg, title="OMBIM-AUTOMATION", header="Complete export Excel", exit=False)
+
+## UI ##
+# 1. Collect schedules
+
+selected_schedules = forms.select_schedules(title ="OMBIM_AUTOMATION- Export schedules")
+if not selected_schedules:
+    forms.alert("Schedule not chosen. Please try again",
+                title = "OMBIM_AUTOMATION - Export Schedules",
+                exitscript=True)
+# 2. Select Excel File
+file_path = select_file( 'Excel File (*.xlsx)|*.xlsx',"OMBIM_AUTOMATION - Select Excel File")
+
+if not file_path:
+    forms.alert("ExcelFile not chosen. Please try again",
+                title = "OMBIM_AUTOMATION - Export Schedules",
+                exitscript=True)
+## 3. Select option to export
+components = [Label("Select option to Export Excel: "),
+              ComboBox("Combobox1",{"Option 1":"OPT1", "Option 2":"OPT2","Option 3":"OPT3"}),
+
+              Label("Option 1: One schedule per sheet, original names."),
+              Label("Option 2: One schedule per sheet, assigned names."),
+              Label("Option 3: All schedules in a single sheet."),
+              Separator(),
+              Button("Select")]
+
+
+form = FlexForm("OMBIM-Export Schedules", components)
+form.show()
+
+select_option = form.values
+result = select_option.values()[0]
+
+if result == "OPT1":
+    check_schedule_names(selected_schedules)
+    dictionary_data = get_data_schedules(selected_schedules)
+    dump(file_path, dictionary_data)
+    ## REPORT FINAL##
+    names = dictionary_data.keys()
+    messagefinal(names)
+
+if result == "OPT2":
+    dictionary_data = get_data_schedules(selected_schedules)
+    ### NEW NAMES ###
+    names = dictionary_data.keys()
+    new_names = ["Excel{}".format(i + 1) for i, _ in enumerate(names)]
+    for x,y in zip(names, new_names):
+        dictionary_data[y] = dictionary_data.pop(x)
+    ## WRITE EXCEL ###
+    dump(file_path, dictionary_data)
+    ## REPORT FINAL##
+    names = dictionary_data.keys()
+    messagefinal(names)
+
+if result == "OPT3":
+    dictionary_data = get_data_schedules(selected_schedules)
+    new_data = []
+    for schedule_name, schedule_data in dictionary_data.items():
+        new_data.append([schedule_name])   # Título del schedule
+        new_data.extend(schedule_data)     # Filas del schedule
+        new_data.append([])                # Fila vacía como separador
+    new_dictionary = {}
+    new_dictionary["ExcelResume"] = new_data
+    ## WRITE EXCEL ###
+    dump(file_path, new_dictionary)
+    ## REPORT FINAL##
+    names = dictionary_data.keys()
+    messagefinal(names)
+
+
+
+
+
+
