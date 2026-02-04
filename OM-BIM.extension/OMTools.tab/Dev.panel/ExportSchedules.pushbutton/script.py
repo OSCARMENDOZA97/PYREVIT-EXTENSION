@@ -1,27 +1,34 @@
 # -*- coding: utf-8 -*-
 __title__     = "SchedExport"
 __author__    = "Oscar Mendoza"
-__doc__ = """Version = 1.0
-Date    = 20.06.2025
+__doc__ = """Version = 2.0
+Date    = 04.02.2026
 _____________________________________________________________________
 Description:
-Export data to schedules
+Export selected Revit schedules to Excel using different export modes.
+_____________________________________________________________________
+Export Options:
+OPT1: One schedule per Excel sheet using original names.
+OPT2: One schedule per Excel sheet using assigned names (Excel1, Excel2, ...).
+OPT3: All schedules combined into a single Excel sheet.
 _____________________________________________________________________
 How-to:
 -> Run the script
--> Select Schedules to export
+-> Select schedules
+-> Select Excel file
+-> Choose export option
 _____________________________________________________________________
 Last update:
 - [20.06.25] - 1.0 RELEASE
+- [04.02.26]-  2.0 Added export options (OPT1, OPT2, OPT3)
 ________________________________________________________________________
-Author: Oscar Mendoza"""  # Descripcion
+Author: Oscar Mendoza"""
 
 ### EXTRA: Tu puedes borrar esto
-__helpurl__ = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+__helpurl__ = 'https://www.youtube.com/@mendozaballenabim'
 __min_revit_ver__ = 2021
 __max_revit_ver__ = 2025
 
-from distutils.dep_util import newer
 
 # ⬇️ IMPORTS
 #--------------------------------------------------------------------------
@@ -35,7 +42,6 @@ import xlsxwriter
 #--------------------------------------------------------------------------
 uidoc = __revit__.ActiveUIDocument   #type: Document
 doc = __revit__.ActiveUIDocument.Document
-selection = uidoc.Selection         #type: Selection
 
 # 💻MAIN
 #--------------------------------------------------------------------------
@@ -99,13 +105,12 @@ def check_schedule_names(list1):
 
 ### FUNCTION TO MESSAGE ##
 def messagefinal(names):
-    msg = ("  Successfull export schedules ✅\n")
-    msg += "\n  Total schedules export 📦: {}\n".format(len(names))
-    msg += "\n  List of schedules export 📃:\n"
-    msg += "\n".join("    -{}".format(x) for x in names)
+    msg = ("  Successful schedule export ✅\n")
+    msg += "\n  Total schedules exported 📦: {}\n".format(len(names))
+    msg += "\n  Exported schedules list 📃:\n"
+    msg += "\n".join("    - {}".format(x) for x in names)
 
-    Alert(msg, title="OMBIM-AUTOMATION", header="Complete export Excel", exit=False)
-
+    Alert(msg, title="OMBIM-AUTOMATION", header="Excel export completed", exit=False)
 ## UI ##
 # 1. Collect schedules
 
@@ -146,20 +151,21 @@ if result == "OPT1":
     names = dictionary_data.keys()
     messagefinal(names)
 
-if result == "OPT2":
+elif result == "OPT2":
     dictionary_data = get_data_schedules(selected_schedules)
     ### NEW NAMES ###
-    names = dictionary_data.keys()
-    new_names = ["Excel{}".format(i + 1) for i, _ in enumerate(names)]
-    for x,y in zip(names, new_names):
-        dictionary_data[y] = dictionary_data.pop(x)
+    names = list(dictionary_data.keys())
+    new_names = ["Excel{}".format(i + 1) for i in range(len(names))]
+    new_dictionary = {}
+    for old_name, new_name in zip(names, new_names):
+        new_dictionary[new_name] = dictionary_data[old_name]
     ## WRITE EXCEL ###
-    dump(file_path, dictionary_data)
+    dump(file_path, new_dictionary)
     ## REPORT FINAL##
     names = dictionary_data.keys()
     messagefinal(names)
 
-if result == "OPT3":
+elif result == "OPT3":
     dictionary_data = get_data_schedules(selected_schedules)
     new_data = []
     for schedule_name, schedule_data in dictionary_data.items():
