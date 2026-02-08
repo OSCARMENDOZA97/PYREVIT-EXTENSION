@@ -21,10 +21,11 @@ _____________________________________________________________________
 Last update:
 - [20.06.25] - 1.0 RELEASE
 - [04.02.26]-  2.0 Added export options (OPT1, OPT2, OPT3)
+- [06.02.26]-  2.1 Export Ordered Elements
 ________________________________________________________________________
 Author: Oscar Mendoza"""
 
-### EXTRA: Tu puedes borrar esto
+### EXTRA: Tú puedes borrar esto
 __helpurl__ = 'https://www.youtube.com/@mendozaballenabim'
 __min_revit_ver__ = 2021
 __max_revit_ver__ = 2025
@@ -36,6 +37,7 @@ from Autodesk.Revit.DB import *
 from pyrevit import forms
 from rpw.ui.forms import *
 import xlsxwriter
+from collections import OrderedDict
 
 
 #📦VARIABLES
@@ -51,7 +53,7 @@ def get_data_schedules(list_schedules):
     :list_schedules: List of schedules elements
     :return: Dictionary {schedule_name: table_data}
     """
-    result ={}
+    result = {}
     for schedule in list_schedules:
         table = schedule.GetTableData().GetSectionData(SectionType.Body)
         schedule_name = Element.Name.GetValue(schedule) #Value x Value
@@ -74,12 +76,29 @@ def dump(xlfile, datadict):
     Creates a worksheet for each item of the input dictionary.
 
     Args:
-        xlfile (str): full path of the target excel file
+        xlfile (str): full path of the target Excel file
         datadict (dict[str, list]): dictionary of worksheets names and data
     """
     xlwb = xlsxwriter.Workbook(xlfile)
     # bold = xlwb.add_format({'bold': True})
     for xlsheetname, xlsheetdata in datadict.items():
+        xlsheet = xlwb.add_worksheet(xlsheetname)
+        for idx, data in enumerate(xlsheetdata):
+            xlsheet.write_row(idx, 0, data)
+    xlwb.close()
+
+def dump2(xlfile, list_names, list_values):
+    """Write data to Excel file.
+
+    Creates a worksheet for each item of the input dictionary.
+
+    Args:
+        xlfile (str): full path of the target Excel file
+        datadict (dict[str, list]): dictionary of worksheets names and data
+    """
+    xlwb = xlsxwriter.Workbook(xlfile)
+    # bold = xlwb.add_format({'bold': True})
+    for xlsheetname, xlsheetdata in zip(list_names, list_values):
         xlsheet = xlwb.add_worksheet(xlsheetname)
         for idx, data in enumerate(xlsheetdata):
             xlsheet.write_row(idx, 0, data)
@@ -91,7 +110,7 @@ def check_schedule_names(list1):
         if len(Element.Name.GetValue(x)) > 31]
 
     if schedules_exceed:
-        msg = "⚠ The following schedules exceed the 31-character limit:\n"
+        msg = "The following schedules exceed the 31-character limit:\n\n"
         msg += "\n".join("- {}".format(Element.Name.GetValue(x)) for x in schedules_exceed)
         msg += "\n\nPlease select Option 2 or Option 3."
 
@@ -105,12 +124,20 @@ def check_schedule_names(list1):
 
 ### FUNCTION TO MESSAGE ##
 def messagefinal(names):
-    msg = ("  Successful schedule export ✅\n")
-    msg += "\n  Total schedules exported 📦: {}\n".format(len(names))
-    msg += "\n  Exported schedules list 📃:\n"
+    msg = ("  Successful schedule export \n")
+    msg += "\n  Total schedules exported : {}\n".format(len(names))
+    msg += "\n  Exported schedules list :\n"
     msg += "\n".join("    - {}".format(x) for x in names)
 
     Alert(msg, title="OMBIM-AUTOMATION", header="Excel export completed", exit=False)
+
+## FUNCTION TO ORDER DICTIONARY ###
+def dictionary_ordered(dictionary):
+    keys_order = sorted(dictionary.keys())
+    values_order = [dictionary[k] for k in keys_order]
+    result = [keys_order, values_order]
+    return result
+
 ## UI ##
 # 1. Collect schedules
 
@@ -140,35 +167,34 @@ components = [Label("Select option to Export Excel: "),
 form = FlexForm("OMBIM-Export Schedules", components)
 form.show()
 
-select_option = form.values
-result = select_option.values()[0]
+export_option = form.values.values()[0]
 
-if result == "OPT1":
+if export_option == "OPT1":
     check_schedule_names(selected_schedules)
     dictionary_data = get_data_schedules(selected_schedules)
-    dump(file_path, dictionary_data)
+    elements = dictionary_ordered(dictionary_data)
+    dump2(file_path, elements[0], elements[1])
     ## REPORT FINAL##
     names = dictionary_data.keys()
     messagefinal(names)
 
-elif result == "OPT2":
+elif export_option == "OPT2":
     dictionary_data = get_data_schedules(selected_schedules)
+    elements = dictionary_ordered(dictionary_data)
     ### NEW NAMES ###
     names = list(dictionary_data.keys())
     new_names = ["Excel{}".format(i + 1) for i in range(len(names))]
-    new_dictionary = {}
-    for old_name, new_name in zip(names, new_names):
-        new_dictionary[new_name] = dictionary_data[old_name]
     ## WRITE EXCEL ###
-    dump(file_path, new_dictionary)
+    dump2(file_path,new_names, elements[1])
     ## REPORT FINAL##
-    names = dictionary_data.keys()
+    names = elements[0]
     messagefinal(names)
 
-elif result == "OPT3":
+elif export_option == "OPT3":
     dictionary_data = get_data_schedules(selected_schedules)
+    elements = dictionary_ordered(dictionary_data)
     new_data = []
-    for schedule_name, schedule_data in dictionary_data.items():
+    for schedule_name, schedule_data in zip(elements[0],elements[1]):
         new_data.append([schedule_name])   # Título del schedule
         new_data.extend(schedule_data)     # Filas del schedule
         new_data.append([])                # Fila vacía como separador
@@ -179,9 +205,6 @@ elif result == "OPT3":
     ## REPORT FINAL##
     names = dictionary_data.keys()
     messagefinal(names)
-
-
-
 
 
 
