@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 __title__     = "SchedExport"
 __author__    = "Oscar Mendoza"
-__doc__ = """Version = 2.0
+__doc__ = """Version = 2.1
 Date    = 04.02.2026
 _____________________________________________________________________
 Description:
