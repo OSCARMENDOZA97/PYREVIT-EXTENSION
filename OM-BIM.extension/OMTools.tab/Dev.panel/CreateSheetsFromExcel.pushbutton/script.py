@@ -23,7 +23,7 @@ Author: Oscar Mendoza"""  # Descripcion
 ### EXTRA: Tú puedes borrar esto
 __helpurl__ = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
 __min_revit_ver__ = 2021
-__max_revit_ver__ = 2025
+__max_revit_ver__ = 2026
 
 from csv import excel
 
@@ -153,14 +153,36 @@ if not excel_path:
 else:
     title_block_type = UI.combobox_item
     file_path        = excel_path
-    data_excel       = excel_to_rows(file_path,UI.textbox_item)
+    data_excel       = excel_to_rows(file_path, UI.textbox_item)
+    
     with Transaction(doc, "Create New Sheet") as t:
         t.Start()
         for lf in data_excel:
-            View_Sheet = ViewSheet.Create(doc, title_block_type)  # Creacion Planos
-            View_Sheet.SheetNumber = lf[0]
-            View_Sheet.Name = lf[1]
+            # 1. Asegurar y limpiar el número de plano (SheetNumber)
+            sheet_num = lf[0]
+            if isinstance(sheet_num, float):
+                # Si termina en .0 (ej. 1.0), lo convertimos a entero primero para quitar el decimal
+                if sheet_num.is_integer():
+                    sheet_num = str(int(sheet_num))
+                else:
+                    sheet_num = str(sheet_num)
+            else:
+                sheet_num = str(sheet_num)
+
+            # 2. Asegurar el nombre del plano (Name)
+            sheet_name = lf[1]
+            if isinstance(sheet_name, float) and sheet_name.is_integer():
+                sheet_name = str(int(sheet_name))
+            else:
+                sheet_name = str(sheet_name)
+
+            # 3. Creación de los Planos en Revit
+            View_Sheet = ViewSheet.Create(doc, title_block_type)
+            View_Sheet.SheetNumber = sheet_num
+            View_Sheet.Name = sheet_name
+            
         t.Commit()
+        
     msg = "✅ Sheets created successfully in Revit.\n"
     msg += "📄 Total sheets generated: {}\n".format(len(data_excel))
     msg += "\nAll sheets were created based on the selected Excel file."
