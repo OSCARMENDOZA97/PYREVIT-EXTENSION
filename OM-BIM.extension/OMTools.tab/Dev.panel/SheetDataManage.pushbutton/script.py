@@ -15,7 +15,7 @@ Last update:
 Author: Oscar Mendoza"""
 
 __min_revit_ver__ = 2021
-__max_revit_ver__ = 2026
+__max_revit_ver__ = 2027
 
 # ⬇️ IMPORTS
 # --------------------------------------------------------------------------
