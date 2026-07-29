@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 __title__     = "ElemID"
 __author__    = "Oscar Mendoza"
-__doc__ = """Version = 1.0
+__doc__ = """Version = 2.0
 Date    = 27.06.2025
 _____________________________________________________________________
 Description:
@@ -14,6 +14,7 @@ How-to:
 _____________________________________________________________________
 Last update:
 - [27.06.2025] - 1.0 RELEASE
+- [15.02.2026] - 2.0 Fix Error Revit 26 No atribute Keys
 ________________________________________________________________________
 Author: Oscar Mendoza"""  # Descripcion
 
@@ -28,7 +29,7 @@ import Autodesk
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI.Selection import *
 from pyrevit import forms
-from Snippets._params import *
+import System
 from rpw.ui.forms import *
 #📦VARIABLES
 #--------------------------------------------------------------------------
@@ -39,104 +40,68 @@ selection = uidoc.Selection         #type: Selection
 # 💻MAIN
 #--------------------------------------------------------------------------
 ## FUNCTIONS ## #
-def collection_for_name_category(nombre=None):
-    """
-    Uso:
-        Selecciona una o varias categorías de revit por nombre
-    Entradas:
-        nombre <str> o <list[str]>: Nombre(s) de categoría(s) a seleccionar.
-        Si es None, devuelve la lista completa de nombres de categorías.
-    Salida:
-        Si se introduce correctamente el nombre, se obtiene un diccionario con los nombres
-        y categorías correspondientes
-    """
-    #Acceder al listado completo categorías
-    categories = doc.Settings.Categories
-    names = [cat.Name for cat in categories]
-    dic_categories = dict(zip(names, categories))
-    if nombre:
-        #Case 1 : Str
-        if isinstance(nombre, str):
-            if nombre in names:
-                salida = {nombre :dic_categories[nombre]} # dict one element
-            else:
-                salida = "Check name"
-        #Case2 : List
-        if isinstance(nombre, list):
-            for x in nombre:
-                if x in names:
-                    salida = {n: dic_categories[n] for n in nombre if n in dic_categories.keys()} #dict two or more
-                else:
-                    salida = "Check name"
-    else:
-        salida = sorted(names)
-    return salida
+builtInCategoriesName = ["OST_ShaftOpening", "OST_DuctAccessory", "OST_PipeAccessory", "OST_Coupler", "OST_VibrationManagement", "OST_DuctInsulations", "OST_PipeInsulations", "OST_DuctLinings", "OST_ElectricalFixtures", "OST_PlumbingFixtures", "OST_Parking", "OST_Areas", "OST_FabricAreas", "OST_Rebar", "OST_MEPAnalyticalFraming", "OST_StructuralFraming", "OST_CableTray", "OST_StairsRailing", "OST_MEPAnalyticalBus", "OST_Wire",
+"OST_StructuralTendon", "OST_BridgeCables", "OST_MechanicalEquipment", "OST_Roads", "OST_StructuralFoundation", "OST_MEPAnalyticalWaterLoop", "OST_ElectricalCircuit", "OST_VerticalCirculation", "OST_DuctCurves", "OST_FlexDuctCurves", "OST_ElectricalLoadSet", "OST_MechanicalEquipmentSet", "OST_BridgeAbutments", "OST_Roofs", "OST_AudioVisualDevices", "OST_FireAlarmDevices", "OST_CommunicationDevices", "OST_MechanicalControlDevices", "OST_DataDevices",
+"OST_LightingDevices", "OST_SecurityDevices", "OST_TelephoneDevices", "OST_Site", "OST_Entourage", "OST_PlumbingEquipment", "OST_FoodServiceEquipment", "OST_ZoneEquipment", "OST_Railing", "OST_CableConduit", "OST_ElectricalEquipment", "OST_SpecialityEquipment", "OST_MechanicalEquipment", "OST_Stairs", "OST_BridgeFraming", "OST_TemporaryStructure", "OST_RebarShape", "OST_ElectricalPowerSource",
+"OST_MEPAnalyticalTransferSwitch", "OST_ExpansionJoints", "OST_LightingFixtures", "OST_FabricReinforcement", "OST_PlaceHolderDucts", "OST_PlaceHolderPipes", "OST_Mass", "OST_Furniture", "OST_GenericModel", "OST_Casework", "OST_Walls", "OST_Hardscape", "OST_Parts", "OST_StructuralColumns", "OST_BridgePiers", "OST_Bearings", "OST_FireProtection",
+"OST_Doors", "OST_Ramps", "OST_FabricationDuctwork", "OST_AreaRain", "OST_PathRein", "OST_CurtainGrids", "OST_SwitchSystem", "OST_FabricationDuctworkStiffeners", "OST_StructuralStiffener", "OST_Sprinklers", "OST_Signage", "OST_MEPAnalyticalLoad", "OST_Curtains", "OST_FabricationHangers",
+"OST_Floors", "OST_BridgeDecks", "OST_Ceilings", "OST_DuctTerminal", "OST_NurseCallDevices", "OST_CableTrayRun", "OST_ConduitRun", "OST_ElectricalAnalyticalTransformer", "OST_PipeCurves", "OST_FabricationPipework", "OST_FlexPipeCurves", "OST_Conduit", "OST_CableTrayFitting", "OST_DuctFitting", "OST_PipeFitting", "OST_ConduitFitting", "OST_Planting", "OST_Windows", "OST_StructuralTruss"]
 
-def collect_elements_category(cats, instance = True):
-    """
-    Uso:
-        Seleccionar todos los elementos por categoría
-    Entrada:
-        Cat <Autodesk.Revit.DB.Category>:Categoría o Categorias
-    Salida:
-        Se genera un diccionario separando instancias y tipos
-    """
-    Instances = []
-    Types = []
-    for x in cats:
-        if isinstance(x, Category):
-            colection = FilteredElementCollector(doc).OfCategoryId(x.Id).ToElements()
-            # Pregunta a cada elemento por el id de su tipo si el elemento se trata de
-            # un tipo nos dara un -1 si es instancia obtendremos un id valido
-            for ele in colection:
-                if ele.GetTypeId() == ElementId.InvalidElementId:
-                    Types.append(ele)
-                else:
-                    Instances.append(ele)
-        else:
-            print("Aviso'{x}'".format("No es un objeto Category"))
-    if instance:
-        return Instances
-    else:
-        return Types
-def collect_params():
-    """Check if any parameters from provided list are missing in the project
-    :dicc boolean:
-    :return: dictionary name:element
-    """
-    # Get Parameter Bindings Map. - Mapa de enlaces de parámetros
-    bm = doc.ParameterBindings
-
-    # Create a forward iterator
-    itor = bm.ForwardIterator()
-    itor.Reset()
-
-    # Iterate over the map - class external definition
-    loaded_parameters_dic = {}
-    while itor.MoveNext():
+###FUNCTIONS ###
+def collect_elements (doc, list_bic):
+    elements = []
+    for name in list_bic:
         try:
-            elem = doc.GetElement(itor.Key.Id)
-            d = itor.Key  # type: Definition
-            loaded_parameters_dic[d.Name] = d.Name   # clave: Definition, su nombre: su nombre
+            result = System.Enum.Parse(BuiltInCategory, name)
+            list1 = list(FilteredElementCollector(doc).OfCategory(result).WhereElementIsNotElementType().ToElements())
+            if len(list1) > 0:
+                elements.extend(list1)
         except:
             pass
-    return loaded_parameters_dic
-### CODE #####
-# CATEGORIES
-list_categories_names=get_category().keys() # Collect categories PEB
-list_categories = collection_for_name_category(nombre=list_categories_names) # CATEGORIES FOR NAME
-salida = collect_elements_category(list_categories.values(), instance = True) # INSTANCES
-# COLLECT PARAMS
-params = collect_params()
+    return elements
 
-### UI ###
-## CASE 0: NOT HAVE PARAMETERS
-if not params:
-    forms.alert("Model not have parameters.\nPlease try again.", title="OMBIM AUTOMATION", exitscript=True)
+def GetCategoryName(list_elements):
+    uniqueCategories = {x.Category.Name: x.Category.Id for x in list_elements}
+    return uniqueCategories.keys()
 
-components = [Label("ID Param"), ComboBox("ID", params),
+def GetCommonParameters(doc, elementos):
+    if elementos is None or len(elementos) == 0:
+        return []
+    # Obtener parámetros del primer elemento
+    parametersName = set( [p.Definition.Name for p in elementos[0].Parameters])
+    # Recuperar nombres de parámetros comunes
+    for element in elementos[1:]:
+        elementParametersName = set([p.Definition.Name for p in element.Parameters])
+        parametersName.intersection_update(elementParametersName)
+    # Obtener parámetros finales
+    parameters = [
+        p for p in elementos[0].Parameters
+        if p.Definition.Name in parametersName
+        and p.StorageType == StorageType.String
+        and not p.IsReadOnly]
+    return parameters
+
+## UI 1- CATEGORIES###
+elements= collect_elements(doc, builtInCategoriesName)
+categories = GetCategoryName(elements)
+
+select_categories = forms.SelectFromList.show(categories, title = "Grid Locator - Select Categories",
+                                              button_name = "Select", multiselect = True)
+if not select_categories:
+    forms.alert("Categories no choosen. Please try again",
+                title = "OMBIM_AUTOMATION - Grid Locator",
+                exitscript=True)
+
+element_filters = [x for x in elements if x.Category.Name in select_categories]
+
+## UI - 2.1 PARAMETERS ###
+
+parametros = GetCommonParameters(doc, element_filters)
+parametros_dic = {x.Definition.Name:x for x in parametros}
+
+components = [Label("ID Param"), ComboBox("ID", parametros_dic),
               CheckBox("ID_Param", "Set ElementID?"),
-              Label("UniqueId Param"), ComboBox("UniqueID", params),
+              Label("UniqueId Param"), ComboBox("UniqueID", parametros_dic),
               CheckBox("UniqueID_Param", "Set UniqueID?"),
               Button("Select")]
 
@@ -157,27 +122,25 @@ param_uniqueID = form.values["UniqueID"]
 if ID_filter:
     with Transaction(doc, "Set OM_ID_BIM") as t:
         t.Start()
-        for x in salida:
-            param = x.LookupParameter(param_ID)
+        for x in element_filters:
+            param = x.LookupParameter(param_ID.Definition.Name)
             if param is not None:
                 param.Set(str(x.Id))
         t.Commit()
-    msg = ("✅ Successfully assigned Element ID to elements.\n")
-    msg += "📦 Total elements processed: {}\n".format(len(salida))
+    msg = ("Successfully assigned Element ID to elements.\n")
+    msg += "Total elements processed: {}\n".format(len(element_filters))
     Alert(msg, title="OMBIM | Element Identifier", header="Element ID assignment complete", exit=False)
 ## CASE 3 UNIQUE_ID
 
 if UniqueID_filter:
     with Transaction(doc, "Set OM_UNIQUEID_BIM") as t:
         t.Start()
-        for x in salida:
-            param = x.LookupParameter(param_uniqueID)
+        for x in element_filters:
+            param = x.LookupParameter(param_uniqueID.Definition.Name)
             if param is not None:
                 param.Set(str(x.UniqueId))
         t.Commit()
-    msg = ("✅ Successfully assigned Unique ID to elements.\n")
-    msg += "📦 Total elements processed: {}\n".format(len(salida))
+    msg = ("Successfully assigned Unique ID to elements.\n")
+    msg += "Total elements processed: {}\n".format(len(element_filters))
     Alert(msg, title="OMBIM | Element Identifier", header="Unique ID assignment complete", exit=False)
 
-
-#

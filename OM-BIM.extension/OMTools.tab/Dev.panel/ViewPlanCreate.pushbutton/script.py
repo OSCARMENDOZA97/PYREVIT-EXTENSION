@@ -148,9 +148,6 @@ discipline = form.values["Discipline"]
 Prefix = form.values["Prefix"]
 Suffix = form.values["Suffix"]
 SubEspecialidad = form.values["SubEspecialidad"]
-
-
-
 views_created = 0
 for lvl in niveles_list:
     nombre_vista = Prefix + lvl.Name + Suffix

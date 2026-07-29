@@ -120,7 +120,7 @@ def GetLocation(elements):
                     a = abs(minP.X - maxP.X)
                     b = abs(minP.Y - maxP.Y)
                     distancia = max(a, b)
-                    limit = 0.50
+                    limit = 0.8
 
                     if distancia > limit:
                         if distancia == a:

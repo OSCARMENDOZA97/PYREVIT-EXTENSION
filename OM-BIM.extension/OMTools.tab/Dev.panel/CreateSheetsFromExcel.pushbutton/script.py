@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__title__     = "ExcelSheets"
+__title__     = "SheetGenerator"
 __author__    = "Oscar Mendoza"
 __doc__ = """Version = 1.0
 Description:
@@ -23,7 +23,7 @@ Author: Oscar Mendoza"""  # Descripcion
 ### EXTRA: Tú puedes borrar esto
 __helpurl__ = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
 __min_revit_ver__ = 2021
-__max_revit_ver__ = 2027
+__max_revit_ver__ = 2026
 
 from csv import excel
 
